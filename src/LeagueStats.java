@@ -9,14 +9,13 @@ import com.google.gson.stream.JsonReader;
 
 public class LeagueStats
 {
+	private static Gson gson = new Gson();
 	private static String configFile = "config.json";
 	private static LSConfig config;
 	
 	public static void main(String[] args)
 	{
-		Gson gson = new Gson();
-		
-		// Load our API key from our configuration file
+		// Load our configuration file
 		try
 		{
 			JsonReader jsonReader = new JsonReader(new FileReader(configFile));
@@ -33,48 +32,99 @@ public class LeagueStats
 			// Well, we tried to close our stream...
 		}
 		
-		String arg = "";
-		if (args.length > 0)
+		// Print a welcome message
+		System.out.println("Welcome to LeagueStats");
+		String apiKey = config.getApiKey();
+		if (apiKey != null)
 		{
-			arg = args[0];
-		}
-		
-		if (arg.equalsIgnoreCase("config"))
-		{
-			String apiKey = config.getApiKey();
-			if (apiKey != null)
-			{
-				System.out.print("Enter new API key (currently " + apiKey + "): ");
-			}
-			else
-			{
-				System.out.print("Enter new API key: ");
-			}
-
-			Scanner scanner = new Scanner(System.in);
-			String newApiKey = scanner.nextLine();
-			scanner.close();
-			
-			config.setApiKey(newApiKey);
-			
-			String json = gson.toJson(config);
-			try
-			{
-				FileWriter fileWriter = new FileWriter(configFile);
-				fileWriter.write(json);
-				fileWriter.close();
-				
-				System.out.println("New API key successfully saved");
-			}
-			catch (IOException e)
-			{
-				System.err.println("Error writing configuration file");
-			}
+			System.out.println("Using API Key: " + apiKey + ". To change, use config");
 		}
 		else
 		{
-			System.out.println("Commands");
-			System.out.println("config : Enter or change API key");
+			System.out.println("No API Key specified, specify one using config");
 		}
+		printCommands();
+
+		Scanner scanner = new Scanner(System.in);
+		
+		// Main run loop
+		while (true)
+		{
+			String command = scanner.nextLine();
+			
+			// Configuration
+			if (command.equalsIgnoreCase("config"))
+			{
+				apiKey = config.getApiKey();
+				if (apiKey != null)
+				{
+					System.out.print("Enter new API key (currently " + apiKey + "): ");
+				}
+				else
+				{
+					System.out.print("Enter new API key (blank to cancel): ");
+				}
+				
+				String newApiKey = scanner.nextLine();
+				if (newApiKey.isEmpty())
+				{
+					System.out.println("No key entered, using existing API key");
+				}
+				else
+				{
+					config.setApiKey(newApiKey);
+					boolean success = saveConfigFile();
+					if (success)
+					{
+						System.out.println("New API key successfully saved");
+					}
+					else
+					{
+						System.out.println("Error writing configuration file");
+					}
+				}
+			}
+			
+			// Exit
+			else if (command.equalsIgnoreCase("exit"))
+			{
+				break;
+			}
+			
+			// Unrecognized command
+			else
+			{
+				printCommands();
+			}
+		}
+		
+		scanner.close();
+	}
+
+	// Helpers
+	
+	private static void printCommands()
+	{
+		System.out.println("Commands");
+		System.out.println("--------");
+		System.out.println("config : view/set current API key");
+		System.out.println("exit   : exit application");
+	}
+
+	private static boolean saveConfigFile()
+	{
+		String json = gson.toJson(config);
+		try
+		{
+			FileWriter fileWriter = new FileWriter(configFile);
+			fileWriter.write(json);
+			fileWriter.close();
+		}
+		catch (IOException e)
+		{
+			return false;
+		}
+		
+		return true;
 	}
 }
