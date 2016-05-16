@@ -11,10 +11,13 @@ public class LeagueStats
 {
 	private static String s_configFile = "config.json";
 	
+	private static String s_apiKey = null;
 	private static Gson s_gson = new Gson();
-	private static LSConfig s_config;
+	private static LSConfig s_config = null;
 	private static LSCourtesyEngine s_courtesyEngine = new LSCourtesyEngine();
-	private static LSDownloader s_downloader;
+	private static LSDownloader s_downloader = null;
+
+	private static Scanner s_scanner = null;
 	
 	public static void main(String[] args)
 	{
@@ -36,14 +39,14 @@ public class LeagueStats
 		}
 
 		// Set up our LSDownloader with our API key
-		String apiKey = s_config.getApiKey();
-		s_downloader = new LSDownloader(apiKey);
+		s_apiKey = s_config.getApiKey();
+		s_downloader = new LSDownloader(s_apiKey);
 		
 		// Print a welcome message
 		System.out.println("Welcome to LeagueStats");
-		if (apiKey != null)
+		if (s_apiKey != null)
 		{
-			System.out.println("Using API Key: " + apiKey + ". To change, use config");
+			System.out.println("Using API Key: " + s_apiKey + ". To change, use config");
 		}
 		else
 		{
@@ -51,12 +54,12 @@ public class LeagueStats
 		}
 		printCommands();
 
-		Scanner scanner = new Scanner(System.in);
+		s_scanner = new Scanner(System.in);
 		
 		// Main run loop
 		while (true)
 		{
-			String command = scanner.nextLine();
+			String command = s_scanner.nextLine();
 			String[] commandArgs = command.split("\\s+", 2);
 			
 			String commandArg = null;
@@ -69,39 +72,11 @@ public class LeagueStats
 			// Configuration
 			if (command.equalsIgnoreCase("config"))
 			{
-				apiKey = s_config.getApiKey();
-				if (apiKey != null)
-				{
-					System.out.print("Enter new API key (currently " + apiKey + "): ");
-				}
-				else
-				{
-					System.out.print("Enter new API key (blank to cancel): ");
-				}
-				
-				String newApiKey = scanner.nextLine();
-				if (newApiKey.isEmpty())
-				{
-					System.out.println("No key entered, using existing API key");
-				}
-				else
-				{
-					s_config.setApiKey(newApiKey);
-					s_downloader = new LSDownloader(apiKey);
-					boolean success = saveConfigFile();
-					if (success)
-					{
-						System.out.println("New API key successfully saved");
-					}
-					else
-					{
-						System.out.println("Error writing configuration file");
-					}
-				}
+				commandConfig();
 			}
 			
-			// Update Match History
-			else if (command.equalsIgnoreCase("updateMatchHistory"))
+			// Update
+			else if (command.equalsIgnoreCase("update"))
 			{
 				if (commandArg == null)
 				{
@@ -109,55 +84,9 @@ public class LeagueStats
 				}
 				else
 				{
-					// Check if we have this summoner cached, retrieve summoner ID if not
-					Long summonerId = s_config.getSummonerId(commandArg);
-					if (summonerId == null)
-					{
-						System.out.println("Summoner not cached, retrieving data");
-						long delay = s_courtesyEngine.msUntilNextAvailableRequest();
-						if (delay > 0)
-						{
-							try
-							{
-								Thread.sleep(delay);
-								delay = 0;
-							}
-							catch (InterruptedException e)
-							{
-								System.out.println("Error during thread sleep");
-							}
-						}
-						
-						if (delay == 0)
-						{
-							try
-							{
-								s_courtesyEngine.willSendRequest();
-								summonerId = s_downloader.downloadSummonerId(commandArg);
-								
-								s_config.setSummonerId(commandArg, summonerId);
-								saveConfigFile();
-								
-								System.out.println("Successfully retrieved summoner information");
-							}
-							catch (LSDownloaderException e)
-							{
-								System.out.println(e.getMessage());
-							}
-						}
-					}
-					
-					if (summonerId != null)
-					{
-						System.out.println("Downloading match history for summoner " + summonerId + " (" + commandArg + ")");
-						
-						// TODO: Download match history
-						// TODO: Download individual matches
-					}
+					commandUpdate(commandArg);
 				}
 			}
-			
-			// TODO: Add command to repair (download missing matches)
 			
 			// Exit
 			else if (command.equalsIgnoreCase("exit"))
@@ -172,7 +101,8 @@ public class LeagueStats
 			}
 		}
 		
-		scanner.close();
+		s_scanner.close();
+		s_scanner = null;
 	}
 
 	// Helpers
@@ -184,6 +114,88 @@ public class LeagueStats
 		System.out.println("config                : view/set current API key");
 		System.out.println("update <summonerName> : update match history for given summoner name");
 		System.out.println("exit                  : exit application");
+	}
+	
+	private static void commandConfig()
+	{
+		s_apiKey = s_config.getApiKey();
+		if (s_apiKey != null)
+		{
+			System.out.print("Enter new API key (currently " + s_apiKey + "): ");
+		}
+		else
+		{
+			System.out.print("Enter new API key (blank to cancel): ");
+		}
+		
+		String newApiKey = s_scanner.nextLine();
+		if (newApiKey.isEmpty())
+		{
+			System.out.println("No key entered, using existing API key");
+		}
+		else
+		{
+			s_config.setApiKey(newApiKey);
+			s_downloader = new LSDownloader(s_apiKey);
+			boolean success = saveConfigFile();
+			if (success)
+			{
+				System.out.println("New API key successfully saved");
+			}
+			else
+			{
+				System.out.println("Error writing configuration file");
+			}
+		}
+	}
+	
+	private static void commandUpdate(String summonerName)
+	{
+		// Check if we have this summoner cached, retrieve summoner ID if not
+		Long summonerId = s_config.getSummonerId(summonerName);
+		if (summonerId == null)
+		{
+			System.out.println("Summoner not cached, retrieving data");
+			long delay = s_courtesyEngine.msUntilNextAvailableRequest();
+			if (delay > 0)
+			{
+				try
+				{
+					Thread.sleep(delay);
+					delay = 0;
+				}
+				catch (InterruptedException e)
+				{
+					System.out.println("Error during thread sleep");
+				}
+			}
+			
+			if (delay == 0)
+			{
+				try
+				{
+					s_courtesyEngine.willSendRequest();
+					summonerId = s_downloader.downloadSummonerId(summonerName);
+					
+					s_config.setSummonerId(summonerName, summonerId);
+					saveConfigFile();
+					
+					System.out.println("Successfully retrieved summoner information");
+				}
+				catch (LSDownloaderException e)
+				{
+					System.out.println(e.getMessage());
+				}
+			}
+		}
+		
+		if (summonerId != null)
+		{
+			System.out.println("Downloading match history for summoner " + summonerId + " (" + summonerName + ")");
+			
+			// TODO: Download match history
+			// TODO: Download individual matches
+		}
 	}
 
 	private static boolean saveConfigFile()
