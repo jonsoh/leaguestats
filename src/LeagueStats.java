@@ -10,7 +10,7 @@ import com.google.gson.stream.JsonReader;
 public class LeagueStats
 {
 	private static String s_configFile = "config.json";
-	
+
 	private static String s_apiKey = null;
 	private static Gson s_gson = new Gson();
 	private static LSConfig s_config = null;
@@ -18,7 +18,7 @@ public class LeagueStats
 	private static LSDownloader s_downloader = null;
 
 	private static Scanner s_scanner = null;
-	
+
 	public static void main(String[] args)
 	{
 		// Load our configuration file
@@ -41,7 +41,7 @@ public class LeagueStats
 		// Set up our LSDownloader with our API key
 		s_apiKey = s_config.getApiKey();
 		s_downloader = new LSDownloader(s_apiKey);
-		
+
 		// Print a welcome message
 		System.out.println("Welcome to LeagueStats");
 		if (s_apiKey != null)
@@ -55,26 +55,26 @@ public class LeagueStats
 		printCommands();
 
 		s_scanner = new Scanner(System.in);
-		
+
 		// Main run loop
 		while (true)
 		{
 			String command = s_scanner.nextLine();
 			String[] commandArgs = command.split("\\s+", 2);
-			
+
 			String commandArg = null;
 			if (commandArgs.length > 1)
 			{
 				command = commandArgs[0];
 				commandArg = commandArgs[1];
 			}
-			
+
 			// Configuration
 			if (command.equalsIgnoreCase("config"))
 			{
 				commandConfig();
 			}
-			
+
 			// Update
 			else if (command.equalsIgnoreCase("update"))
 			{
@@ -87,26 +87,26 @@ public class LeagueStats
 					commandUpdate(commandArg);
 				}
 			}
-			
+
 			// Exit
 			else if (command.equalsIgnoreCase("exit"))
 			{
 				break;
 			}
-			
+
 			// Unrecognized command
 			else
 			{
 				printCommands();
 			}
 		}
-		
+
 		s_scanner.close();
 		s_scanner = null;
 	}
 
 	// Helpers
-	
+
 	private static void printCommands()
 	{
 		System.out.println("Commands");
@@ -115,7 +115,7 @@ public class LeagueStats
 		System.out.println("update <summonerName> : update match history for given summoner name");
 		System.out.println("exit                  : exit application");
 	}
-	
+
 	private static void commandConfig()
 	{
 		s_apiKey = s_config.getApiKey();
@@ -127,7 +127,7 @@ public class LeagueStats
 		{
 			System.out.print("Enter new API key (blank to cancel): ");
 		}
-		
+
 		String newApiKey = s_scanner.nextLine();
 		if (newApiKey.isEmpty())
 		{
@@ -149,7 +149,7 @@ public class LeagueStats
 			}
 		}
 	}
-	
+
 	private static void commandUpdate(String summonerName)
 	{
 		// Check if we have this summoner cached, retrieve summoner ID if not
@@ -163,10 +163,10 @@ public class LeagueStats
 				{
 					s_courtesyEngine.willSendRequest();
 					summonerId = s_downloader.downloadSummonerId(summonerName);
-					
+
 					s_config.setSummonerId(summonerName, summonerId);
 					saveConfigFile();
-					
+
 					System.out.println("Successfully retrieved summoner information");
 				}
 				catch (LSDownloaderException e)
@@ -175,18 +175,18 @@ public class LeagueStats
 				}
 			}
 		}
-		
+
 		if (summonerId != null)
 		{
 			System.out.println("Downloading match summary for summoner " + summonerId + " (" + summonerName + ")");
-			
+
 			if (delayUntilNextAvailableRequest())
 			{
 				try
 				{
 					s_courtesyEngine.willSendRequest();
 					s_downloader.downloadMatchSummary(summonerId);
-					
+
 					System.out.println("Successfully retrieved match summary");
 				}
 				catch (LSDownloaderException e)
@@ -194,12 +194,12 @@ public class LeagueStats
 					System.out.println(e.getMessage());
 				}
 			}
-			
+
 			System.out.println("Updating match history for summoner " + summonerId + " (" + summonerName + ")");
 			// TODO: Download individual matches
 		}
 	}
-	
+
 	private static boolean delayUntilNextAvailableRequest()
 	{
 		long delay = s_courtesyEngine.msUntilNextAvailableRequest();
@@ -215,7 +215,7 @@ public class LeagueStats
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
 
@@ -232,7 +232,7 @@ public class LeagueStats
 		{
 			return false;
 		}
-		
+
 		return true;
 	}
 }
