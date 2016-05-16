@@ -135,7 +135,8 @@ public class LeagueStats
 		}
 		else
 		{
-			s_config.setApiKey(newApiKey);
+			s_apiKey = newApiKey;
+			s_config.setApiKey(s_apiKey);
 			s_downloader = new LSDownloader(s_apiKey);
 			boolean success = saveConfigFile();
 			if (success)
@@ -156,21 +157,7 @@ public class LeagueStats
 		if (summonerId == null)
 		{
 			System.out.println("Summoner not cached, retrieving data");
-			long delay = s_courtesyEngine.msUntilNextAvailableRequest();
-			if (delay > 0)
-			{
-				try
-				{
-					Thread.sleep(delay);
-					delay = 0;
-				}
-				catch (InterruptedException e)
-				{
-					System.out.println("Error during thread sleep");
-				}
-			}
-			
-			if (delay == 0)
+			if (delayUntilNextAvailableRequest())
 			{
 				try
 				{
@@ -191,11 +178,45 @@ public class LeagueStats
 		
 		if (summonerId != null)
 		{
-			System.out.println("Downloading match history for summoner " + summonerId + " (" + summonerName + ")");
+			System.out.println("Downloading match summary for summoner " + summonerId + " (" + summonerName + ")");
 			
-			// TODO: Download match history
+			if (delayUntilNextAvailableRequest())
+			{
+				try
+				{
+					s_courtesyEngine.willSendRequest();
+					s_downloader.downloadMatchSummary(summonerId);
+					
+					System.out.println("Successfully retrieved match summary");
+				}
+				catch (LSDownloaderException e)
+				{
+					System.out.println(e.getMessage());
+				}
+			}
+			
+			System.out.println("Updating match history for summoner " + summonerId + " (" + summonerName + ")");
 			// TODO: Download individual matches
 		}
+	}
+	
+	private static boolean delayUntilNextAvailableRequest()
+	{
+		long delay = s_courtesyEngine.msUntilNextAvailableRequest();
+		if (delay > 0)
+		{
+			try
+			{
+				Thread.sleep(delay);
+			}
+			catch (InterruptedException e)
+			{
+				System.out.println("Error during thread sleep");
+				return false;
+			}
+		}
+		
+		return true;
 	}
 
 	private static boolean saveConfigFile()
