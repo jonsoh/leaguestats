@@ -2,7 +2,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.HashMap;
 
@@ -11,8 +12,10 @@ import com.google.gson.reflect.TypeToken;
 
 public class LSDownloader
 {
-	private static String s_summonerEndpoint = "https://na.api.pvp.net/api/lol/na/v1.4/summoner/by-name/";
-	private static String s_apiKeyQuery = "api_key=";
+	private static String s_endpointScheme = "https";
+	private static String s_endpointHost = "na.api.pvp.net";
+	private static String s_endpointSummonerPathPrefix = "/api/lol/na/v1.4/summoner/by-name/";
+	private static String s_apiKeyQueryPrefix = "api_key=";
 
 	private static Gson s_gson = new Gson();
 	
@@ -29,7 +32,8 @@ public class LSDownloader
 	{
 		try
 		{
-			URL endpointUrl = new URL(s_summonerEndpoint + summonerName + "?" + s_apiKeyQuery + m_apiKey);
+			URI endpointUri = new URI(s_endpointScheme,s_endpointHost, s_endpointSummonerPathPrefix + summonerName, s_apiKeyQueryPrefix + m_apiKey, null);
+			URL endpointUrl = endpointUri.toURL();
 			HttpURLConnection endpointConnection = (HttpURLConnection)endpointUrl.openConnection();
 			int responseCode = endpointConnection.getResponseCode();
 			
@@ -74,9 +78,9 @@ public class LSDownloader
 
 			return summonerId.longValue();
 		}
-		catch (MalformedURLException e)
+		catch (URISyntaxException e)
 		{
-			throw new LSDownloaderException("Failed to download summoner ID: Malformed URL Exception");
+			throw new LSDownloaderException("Failed to download summoner ID: URI Syntax Exception");
 		}
 		catch (IOException e)
 		{
