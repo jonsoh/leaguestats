@@ -67,24 +67,23 @@ public class LSDownloader
 			InputStream endpointResponse = endpointConnection.getInputStream();
 			InputStreamReader reader = new InputStreamReader(endpointResponse);
 
-			HashMap<String, HashMap<String, Object>> summonerMap = s_gson.fromJson(reader, new TypeToken<HashMap<String, HashMap<String, Object>>>(){}.getType());
+			HashMap<String, LSSummoner> summonerMap = s_gson.fromJson(reader, new TypeToken<HashMap<String, LSSummoner>>(){}.getType());
 			if (summonerMap.size() != 1)
 			{
 				throw new LSDownloaderException("Failed to download summoner ID: Incorrect summoner map size");
 			}
 
-			HashMap.Entry<String, HashMap<String, Object>> summonerEntry = summonerMap.entrySet().iterator().next();
-			HashMap<String, Object> summonerInfo = summonerEntry.getValue();
-
-			// GSON parses this as a Double
-			Double summonerId = (Double)summonerInfo.get("id");
+			HashMap.Entry<String, LSSummoner> summonerEntry = summonerMap.entrySet().iterator().next();
+			LSSummoner summoner = summonerEntry.getValue();
+			
+			Long summonerId = summoner.getId();
 			if (summonerId == null)
 			{
 				throw new LSDownloaderException("Failed to download summoner ID: No ID in summoner entry");
 			}
 
 			endpointResponse.close();
-			return summonerId.longValue();
+			return summonerId;
 		}
 		catch (URISyntaxException e)
 		{

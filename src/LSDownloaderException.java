@@ -1,10 +1,9 @@
 public class LSDownloaderException extends Exception
 {
-	private static final long serialVersionUID = -7456731500777033061L;
+	private static final long serialVersionUID = 1L;
 
 	public LSDownloaderException(String string)
 	{
 		super(string);
 	}
-
 }
