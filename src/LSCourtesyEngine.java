@@ -9,8 +9,9 @@ public class LSCourtesyEngine
 	// List of past requests in milliseconds since 1970, latest first
 	private LinkedList<Long> m_pastRequestTimes = new LinkedList<Long>();
 
-	public void willSendRequest()
+	public void didSendRequest()
 	{
+		// Save the time of our request early, just in case we throw
 		Date now = new Date();
 		long requestTime = now.getTime();
 		m_pastRequestTimes.addFirst(requestTime);

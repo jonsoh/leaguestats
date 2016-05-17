@@ -163,7 +163,6 @@ public class LeagueStats
 			{
 				try
 				{
-					s_courtesyEngine.willSendRequest();
 					summonerId = s_downloader.downloadSummonerId(summonerName);
 
 					s_config.setSummonerId(summonerName, summonerId);
@@ -175,6 +174,10 @@ public class LeagueStats
 				{
 					System.out.println(e.getMessage());
 					return;
+				}
+				finally
+				{
+					s_courtesyEngine.didSendRequest();
 				}
 			}
 			else
@@ -192,7 +195,6 @@ public class LeagueStats
 			{
 				try
 				{
-					s_courtesyEngine.willSendRequest();
 					s_downloader.downloadMatchSummary(summonerId);
 
 					System.out.println("Successfully retrieved match summary");
@@ -201,6 +203,10 @@ public class LeagueStats
 				{
 					System.out.println(e.getMessage());
 					return;
+				}
+				finally
+				{
+					s_courtesyEngine.didSendRequest();
 				}
 			}
 			else
@@ -245,7 +251,6 @@ public class LeagueStats
 				{
 					if (delayUntilNextAvailableRequest())
 					{
-						s_courtesyEngine.willSendRequest();
 						try
 						{
 							s_downloader.downloadMatch(missingMatch);
@@ -254,6 +259,10 @@ public class LeagueStats
 						{
 							System.out.println();
 							System.out.println(e.getMessage());
+						}
+						finally
+						{
+							s_courtesyEngine.didSendRequest();
 						}
 					}
 					else
