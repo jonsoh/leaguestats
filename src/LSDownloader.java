@@ -20,9 +20,11 @@ public class LSDownloader
 	private static String s_endpointHost = "na.api.pvp.net";
 	private static String s_endpointSummonerPathPrefix = "/api/lol/na/v1.4/summoner/by-name/";
 	private static String s_endpointMatchSummaryPathPrefix = "/api/lol/na/v2.2/matchlist/by-summoner/";
+	private static String s_endpointMatchPathPrefix = "/api/lol/na/v2.2/match/";
 	private static String s_apiKeyQueryPrefix = "api_key=";
 
 	private static String s_matchSummaryFolder = "matchSummary/";
+	private static String s_matchesFolder = "matches/";
 
 	private static Gson s_gson = new Gson();
 
@@ -100,7 +102,7 @@ public class LSDownloader
 	{
 		try
 		{
-			URI endpointUri = new URI(s_endpointScheme,s_endpointHost, s_endpointMatchSummaryPathPrefix + summonerId, s_apiKeyQueryPrefix + m_apiKey, null);
+			URI endpointUri = new URI(s_endpointScheme, s_endpointHost, s_endpointMatchSummaryPathPrefix + summonerId, s_apiKeyQueryPrefix + m_apiKey, null);
 			URL endpointUrl = endpointUri.toURL();
 			HttpURLConnection endpointConnection = (HttpURLConnection)endpointUrl.openConnection();
 			int responseCode = endpointConnection.getResponseCode();
@@ -161,6 +163,78 @@ public class LSDownloader
 		catch (IOException e)
 		{
 			throw new LSDownloaderException("Failed to download match summary: I/O Exception");
+		}
+	}
+	
+	public boolean matchIsCached(Long matchId)
+	{
+		File match = new File(s_matchesFolder + matchId + ".json");
+		return match.exists();
+	}
+
+	public void downloadMatch(Long matchId) throws LSDownloaderException
+	{
+		try
+		{
+			URI endpointUri = new URI(s_endpointScheme, s_endpointHost, s_endpointMatchPathPrefix + matchId, s_apiKeyQueryPrefix + m_apiKey, null);
+			URL endpointUrl = endpointUri.toURL();
+			HttpURLConnection endpointConnection = (HttpURLConnection)endpointUrl.openConnection();
+			int responseCode = endpointConnection.getResponseCode();
+
+			switch (responseCode)
+			{
+				case 200:
+					break;
+				case 400:
+					throw new LSDownloaderException("Failed to download match: Bad request");
+				case 401:
+					throw new LSDownloaderException("Failed to download match: Unauthorized");
+				case 404:
+					throw new LSDownloaderException("Failed to download match: Match not found");
+				case 429:
+					throw new LSDownloaderException("Failed to download match: Rate limit exceeded");
+				case 500:
+					throw new LSDownloaderException("Failed to download match: Internal server error");
+				case 503:
+					throw new LSDownloaderException("Failed to download match: Service unavailable");
+				default:
+					throw new LSDownloaderException("Failed to download match: Unknown response code");
+			}
+
+			// Create our folder if it doesn't already exist
+			File matchFolder = new File(s_matchesFolder);
+			if (!matchFolder.exists())
+			{
+				System.out.println("Match folder does not exist, creating");
+				try
+				{
+					matchFolder.mkdir();
+				}
+				catch (SecurityException e)
+				{
+					throw new LSDownloaderException("Failed to download match: Could not create match folder");
+				}
+			}
+
+			File summonerMatchSummary = new File(s_matchesFolder + matchId + ".json");
+
+			InputStream endpointResponse = endpointConnection.getInputStream();
+			ReadableByteChannel byteChannel = Channels.newChannel(endpointResponse);
+			FileOutputStream outputStream = new FileOutputStream(summonerMatchSummary);
+
+			// Only transfers the first Long.MAX_VALUE bytes...hopefully we never need more than that
+			outputStream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
+
+			outputStream.close();
+			endpointResponse.close();
+		}
+		catch (URISyntaxException e)
+		{
+			throw new LSDownloaderException("Failed to download match: URI Syntax Exception");
+		}
+		catch (IOException e)
+		{
+			throw new LSDownloaderException("Failed to download match: I/O Exception");
 		}
 	}
 }

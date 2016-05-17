@@ -2,6 +2,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.Scanner;
 
 import com.google.gson.Gson;
@@ -15,6 +16,7 @@ public class LeagueStats
 	private static Gson s_gson = new Gson();
 	private static LSConfig s_config = null;
 	private static LSCourtesyEngine s_courtesyEngine = new LSCourtesyEngine();
+	private static LSDataParser s_dataParser = new LSDataParser();
 	private static LSDownloader s_downloader = null;
 
 	private static Scanner s_scanner = null;
@@ -172,7 +174,13 @@ public class LeagueStats
 				catch (LSDownloaderException e)
 				{
 					System.out.println(e.getMessage());
+					return;
 				}
+			}
+			else
+			{
+				System.out.println("Internal error in rate throttling");
+				return;
 			}
 		}
 
@@ -192,11 +200,79 @@ public class LeagueStats
 				catch (LSDownloaderException e)
 				{
 					System.out.println(e.getMessage());
+					return;
 				}
+			}
+			else
+			{
+				System.out.println("Internal error in rate throttling");
+				return;
 			}
 
 			System.out.println("Updating match history for summoner " + summonerId + " (" + summonerName + ")");
-			// TODO: Download individual matches
+			
+			LinkedList<LSMatchSummary> matchSummaries = null;
+			try
+			{
+				matchSummaries = s_dataParser.getMatchSummariesForSummonerId(summonerId);
+			}
+			catch (LSDataParserException e)
+			{
+				System.out.println(e.getMessage());
+				return;
+			}
+			
+			System.out.println("Updating matches for summoner " + summonerId + " (" + summonerName + "): " + matchSummaries.size() + " matches found");
+			
+			LinkedList<Long> missingMatches = new LinkedList<Long>();
+			for (LSMatchSummary matchSummary : matchSummaries)
+			{
+				Long matchId = matchSummary.getMatchId();
+				if (!s_downloader.matchIsCached(matchId))
+				{
+					missingMatches.add(matchId);
+				}
+			}
+			
+			if (missingMatches.size() > 0)
+			{
+				System.out.println("Missing " + missingMatches.size() + " matches, downloading:");
+				
+				long progress = 0;
+				System.out.print(progress + " / " + missingMatches.size() + "\r");
+				
+				for (Long missingMatch : missingMatches)
+				{
+					if (delayUntilNextAvailableRequest())
+					{
+						s_courtesyEngine.willSendRequest();
+						try
+						{
+							s_downloader.downloadMatch(missingMatch);
+						}
+						catch (LSDownloaderException e)
+						{
+							System.out.println();
+							System.out.println(e.getMessage());
+						}
+					}
+					else
+					{
+						System.out.println();
+						System.out.println("Internal error in rate throttling");
+						return;
+					}
+
+					progress++;
+					System.out.print(progress + " / " + missingMatches.size() + "\r");
+				}
+				
+				System.out.println();
+				System.out.println("Done downloading matches!");
+			}
+
+			
+			System.out.println("Update complete for summoner " + summonerId + " (" + summonerName + ")");
 		}
 	}
 
@@ -211,7 +287,6 @@ public class LeagueStats
 			}
 			catch (InterruptedException e)
 			{
-				System.out.println("Error during thread sleep");
 				return false;
 			}
 		}
